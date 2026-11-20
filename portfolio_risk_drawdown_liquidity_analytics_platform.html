@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Risk, Drawdown & Liquidity Analytics | SBL Collateral Monitor</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            navy: {
+              950: '#071120',
+              900: '#0B192C',
+              800: '#132743',
+              700: '#1E3A5F',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    /* Range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 9999px;
+      background: #e2e8f0;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #0f172a;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #1d4ed8;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #memoModalContent, #memoModalContent * {
+        visibility: visible;
+      }
+      #memoModalContent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        box-shadow: none;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+  <!-- TOP INSTITUTIONAL HEADER -->
+  <header class="bg-navy-950 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <!-- Brand & Title -->
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center shrink-0 shadow-inner border border-blue-400/30">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Portfolio Risk, Drawdown & Liquidity Analytics</h1>
+            <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">HNW Lending / SBL Engine</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Multi-Asset Covariance Risk Engine, Tail-Loss VaR/CVaR & Liquidity Access Line (LAL) Collateral Monitor</p>
+        </div>
+      </div>
+
+      <!-- Preset Selectors & Memo Action -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-slate-400 font-medium mr-1 hidden sm:inline">Portfolio Preset:</span>
+        <button onclick="applyPreset('balanced')" id="preset-balanced" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white border border-blue-500 transition shadow-sm">
+          Balanced HNW Collateral
+        </button>
+        <button onclick="applyPreset('growth')" id="preset-growth" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 border border-slate-700 transition">
+          Equity-Concentrated Growth
+        </button>
+        <button onclick="applyPreset('defensive')" id="preset-defensive" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 border border-slate-700 transition">
+          Defensive Yield & Liquidity
+        </button>
+        <div class="h-5 w-px bg-slate-700 mx-1 hidden sm:block"></div>
+        <button onclick="openMemoModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Credit & Risk Memo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT WORKSPACE -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+
+    <!-- EXECUTIVE KPI STRIP (6 CARDS) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+      <!-- KPI 1: Portfolio & Eligible Collateral -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Eligible Collateral</span>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700" id="kpi-haircut-avg">Avg Haircut: --%</span>
+        </div>
+        <div class="my-2">
+          <div class="text-xl font-bold text-slate-900 font-mono tabular-nums" id="kpi-eligible-val">$0</div>
+          <div class="text-xs text-slate-500 mt-0.5">of <span class="font-mono font-medium text-slate-700" id="kpi-total-val">$0</span> Gross MV</div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
+          <span>Max SBL Capacity:</span>
+          <span class="font-mono font-semibold text-blue-700" id="kpi-max-capacity">$0</span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Current LTV vs Maintenance & Margin Buffer -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between" id="kpi-ltv-card">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">SBL Facility LTV</span>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800" id="kpi-sbl-badge">Healthy</span>
+        </div>
+        <div class="my-2">
+          <div class="flex items-baseline gap-2">
+            <span class="text-xl font-bold text-slate-900 font-mono tabular-nums" id="kpi-current-ltv">0.0%</span>
+            <span class="text-xs text-slate-500 font-mono">/ <span id="kpi-max-ltv">0.0%</span> Max</span>
+          </div>
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div id="kpi-ltv-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 45%"></div>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-600 border-t border-slate-100 pt-2 flex justify-between">
+          <span>Margin Call Buffer:</span>
+          <span class="font-mono font-semibold text-emerald-700" id="kpi-margin-buffer">$0 (0.0%)</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Risk-Adjusted Return (Sharpe & Sortino) -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Risk-Adjusted Return</span>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">Rf: 4.25%</span>
+        </div>
+        <div class="my-2 flex items-baseline justify-between">
+          <div>
+            <div class="text-xl font-bold text-slate-900 font-mono tabular-nums" id="kpi-sharpe">0.00</div>
+            <div class="text-[11px] text-slate-500">Sharpe Ratio</div>
+          </div>
+          <div class="text-right">
+            <div class="text-lg font-bold text-indigo-700 font-mono tabular-nums" id="kpi-sortino">0.00</div>
+            <div class="text-[11px] text-slate-500">Sortino Ratio</div>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
+          <span>Exp. Return / Vol:</span>
+          <span class="font-mono font-semibold text-slate-800"><span id="kpi-exp-ret">0.0%</span> / <span id="kpi-vol">0.0%</span></span>
+        </div>
+      </div>
+
+      <!-- KPI 4: Value-at-Risk (95% & 99% Monthly VaR) -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Monthly VaR (Param.)</span>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-800">21-Day</span>
+        </div>
+        <div class="my-2">
+          <div class="text-xl font-bold text-amber-700 font-mono tabular-nums" id="kpi-var95">-$0</div>
+          <div class="text-xs text-slate-500 mt-0.5">95% Conf. (<span class="font-mono font-medium text-slate-700" id="kpi-var95-pct">-0.0%</span>)</div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
+          <span>99% Monthly VaR:</span>
+          <span class="font-mono font-semibold text-rose-700" id="kpi-var99">-$0 (-0.0%)</span>
+        </div>
+      </div>
+
+      <!-- KPI 5: Conditional VaR (CVaR / Expected Shortfall) -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tail Risk (CVaR / ES)</span>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-rose-50 text-rose-700">99% Tail</span>
+        </div>
+        <div class="my-2">
+          <div class="text-xl font-bold text-rose-700 font-mono tabular-nums" id="kpi-cvar99">-$0</div>
+          <div class="text-xs text-slate-500 mt-0.5">Expected Shortfall (<span class="font-mono font-medium text-rose-700" id="kpi-cvar99-pct">-0.0%</span>)</div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
+          <span>95% Monthly CVaR:</span>
+          <span class="font-mono font-semibold text-slate-800" id="kpi-cvar95">-$0</span>
+        </div>
+      </div>
+
+      <!-- KPI 6: Max Drawdown & Collateral Liquidity / HHI -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Drawdown & Liquidity</span>
+          <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700" id="kpi-hhi-badge">HHI: --</span>
+        </div>
+        <div class="my-2 flex items-baseline justify-between">
+          <div>
+            <div class="text-xl font-bold text-rose-700 font-mono tabular-nums" id="kpi-max-dd">-0.0%</div>
+            <div class="text-[11px] text-slate-500">3Y Max Drawdown</div>
+          </div>
+          <div class="text-right">
+            <div class="text-lg font-bold text-slate-900 font-mono tabular-nums" id="kpi-liq-days">0.0d</div>
+            <div class="text-[11px] text-slate-500">Wtd. Liquidation</div>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
+          <span>Liquidity Score:</span>
+          <span class="font-mono font-semibold text-emerald-700" id="kpi-liq-score">0 / 100</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TWO-COLUMN WORKSPACE: LEFT SIDEBAR (PORTFOLIO & SBL INPUTS) + RIGHT ANALYTICS TABS -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- LEFT COLUMN: PORTFOLIO BUILDER & SBL FACILITY PARAMETERS (4 COLS ON XL) -->
+      <aside class="lg:col-span-4 xl:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold tracking-tight">Multi-Asset Collateral Builder</h2>
+            <p class="text-[11px] text-slate-400">Adjust pledged holdings, weights & SBL credit line</p>
+          </div>
+          <button onclick="normalizeWeights()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-md font-medium transition shadow-sm" title="Normalize weights to sum to 100%">
+            Normalize 100%
+          </button>
+        </div>
+
+        <div class="p-4 space-y-4">
+          <!-- Facility Parameters -->
+          <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">Pledged Portfolio ($)</label>
+              <input type="number" id="input-portfolio-value" value="2500000" step="50000" min="100000"
+                onchange="handleFacilityInput()" oninput="handleFacilityInput()"
+                class="w-full px-2.5 py-1.5 text-sm font-mono font-semibold bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">SBL Drawn Line ($)</label>
+              <input type="number" id="input-loan-amount" value="1100000" step="25000" min="0"
+                onchange="handleFacilityInput()" oninput="handleFacilityInput()"
+                class="w-full px-2.5 py-1.5 text-sm font-mono font-semibold bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+            </div>
+          </div>
+
+          <!-- Weight Allocation Status Bar -->
+          <div class="flex items-center justify-between text-xs px-1">
+            <span class="font-medium text-slate-600">Total Allocation Weight:</span>
+            <span id="total-weight-indicator" class="font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">100.0%</span>
+          </div>
+
+          <!-- Holdings List -->
+          <div id="holdings-container" class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            <!-- Dynamically injected holding cards -->
+          </div>
+
+          <!-- Add Custom Holding Collapsible / Inline Form -->
+          <div class="pt-2 border-t border-slate-200">
+            <button onclick="toggleAddAssetForm()" id="btn-toggle-add" class="w-full py-2 px-3 rounded-lg border border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 text-xs font-semibold text-slate-700 hover:text-blue-700 transition flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Custom Security / Collateral Holding
+            </button>
+
+            <div id="add-asset-form" class="hidden mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800">New Pledged Security</span>
+                <button onclick="toggleAddAssetForm()" class="text-xs text-slate-400 hover:text-slate-600">Close</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="col-span-2">
+                  <label class="block text-[11px] font-medium text-slate-600">Security / Fund Name</label>
+                  <input type="text" id="new-asset-name" placeholder="e.g., Global Sovereign Bond ETF" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">Asset Class</label>
+                  <select id="new-asset-class" class="w-full px-2 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                    <option value="Equities">Equities</option>
+                    <option value="Mutual Funds">Mutual Funds</option>
+                    <option value="ETFs">ETFs</option>
+                    <option value="REITs">REITs</option>
+                    <option value="Gold ETFs">Gold ETFs</option>
+                    <option value="Fixed Income">Fixed Income</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">Initial Weight (%)</label>
+                  <input type="number" id="new-asset-weight" value="10" min="1" max="100" class="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">Exp. Return (%)</label>
+                  <input type="number" id="new-asset-ret" value="7.5" step="0.5" class="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">Volatility (%)</label>
+                  <input type="number" id="new-asset-vol" value="12.0" step="0.5" min="1" class="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">SBL Haircut (%)</label>
+                  <input type="number" id="new-asset-haircut" value="20" min="5" max="80" class="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600">Liquidation (Days)</label>
+                  <input type="number" id="new-asset-days" value="1" min="1" max="15" class="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg" />
+                </div>
+              </div>
+              <button onclick="addCustomAsset()" class="w-full py-1.5 bg-slate-900 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition">
+                Add to Collateral Pool
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT COLUMN: ANALYTICS TABS & VISUALIZATIONS (8 COLS ON XL) -->
+      <div class="lg:col-span-8 xl:col-span-8 space-y-4">
+
+        <!-- TAB NAVIGATION BAR -->
+        <div class="bg-white rounded-xl p-1.5 border border-slate-200 shadow-sm flex flex-wrap gap-1.5">
+          <button onclick="switchTab('drawdown')" id="tab-btn-drawdown" class="tab-btn flex-1 min-w-[160px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold bg-navy-900 text-white shadow-sm transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+            1. Drawdown & Tail VaR
+          </button>
+          <button onclick="switchTab('sbl')" id="tab-btn-sbl" class="tab-btn flex-1 min-w-[160px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+            2. SBL Collateral & Stress Test
+          </button>
+          <button onclick="switchTab('correlation')" id="tab-btn-correlation" class="tab-btn flex-1 min-w-[160px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+            3. Correlation & Efficient Frontier
+          </button>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 1: DRAWDOWN & TAIL RISK ANALYTICS                     -->
+        <!-- ========================================================= -->
+        <div id="tab-content-drawdown" class="space-y-4">
+          <!-- Cumulative Performance Chart Card -->
+          <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Simulated 3-Year Cumulative Performance vs. 60/40 Benchmark</h3>
+                <p class="text-xs text-slate-500">Cholesky-correlated 756-trading-day multi-asset path showing collateral growth & volatility regimes</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="regeneratePath()" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition">
+                  Re-Simulate Path
+                </button>
+              </div>
+            </div>
+            <div class="relative h-[250px] w-full">
+              <canvas id="cumulativeChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Underwater Drawdown & Tail Return Distribution Grid -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <!-- Underwater Drawdown Chart -->
+            <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Underwater Drawdown Profile</h3>
+                  <p class="text-xs text-slate-500">Peak-to-trough collateral erosion vs. SBL margin trigger</p>
+                </div>
+                <span class="text-xs font-mono font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded" id="dd-chart-badge">Max DD: -0.0%</span>
+              </div>
+              <div class="relative h-[220px] w-full">
+                <canvas id="drawdownChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Return Distribution & VaR/CVaR Tail Chart -->
+            <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Daily Return Distribution & Tail VaR/CVaR</h3>
+                  <p class="text-xs text-slate-500">Historical vs. Parametric left-tail loss severity</p>
+                </div>
+                <span class="text-xs font-mono font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded" id="hist-var-badge">95% 1D VaR: -0.00%</span>
+              </div>
+              <div class="relative h-[220px] w-full">
+                <canvas id="distributionChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parametric vs Historical VaR/CVaR Comparison Table -->
+          <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900 mb-3">Comprehensive Tail-Risk & Downside Liquidity Matrix</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500 uppercase tracking-wider bg-slate-50">
+                    <th class="py-2.5 px-3 font-semibold">Risk Horizon</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Parametric VaR (95%)</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Historical VaR (95%)</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Parametric VaR (99%)</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Parametric CVaR (99%)</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Historical CVaR (99%)</th>
+                  </tr>
+                </thead>
+                <tbody id="var-matrix-body" class="divide-y divide-slate-100 font-mono tabular-nums">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: SBL COLLATERAL, CONCENTRATION & STRESS SIMULATOR   -->
+        <!-- ========================================================= -->
+        <div id="tab-content-sbl" class="hidden space-y-4">
+
+          <!-- Interactive Market Shock & Margin Call Stress Tester -->
+          <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-bold text-slate-900">SBL / Liquidity Access Line (LAL) Stress-Test Simulator</h3>
+                  <span id="stress-status-pill" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">FACILITY HEALTHY</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Simulate collateral haircuts, market drawdowns, and exact margin call cure requirements</p>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button onclick="setStressScenario('none')" class="stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-900 text-white">Base (0%)</button>
+                <button onclick="setStressScenario('correction')" class="stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">-15% Correction</button>
+                <button onclick="setStressScenario('gfc')" class="stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">2008 GFC Shock</button>
+                <button onclick="setStressScenario('covid')" class="stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">2020 Liquidity Crunch</button>
+                <button onclick="setStressScenario('rates')" class="stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">Rate Hike / REIT Shock</button>
+              </div>
+            </div>
+
+            <!-- Stress Slider & Live Output Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-4 items-center">
+              <div class="md:col-span-5 space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center">
+                  <label class="text-xs font-semibold text-slate-700">Custom Market Shock Multiplier</label>
+                  <span id="stress-shock-label" class="font-mono text-sm font-bold text-rose-700">0.0%</span>
+                </div>
+                <input type="range" id="stress-slider" min="-50" max="10" step="1" value="0" oninput="handleStressSlider(this.value)" class="w-full" />
+                <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                  <span>-50% Crash</span>
+                  <span>-25% Bear</span>
+                  <span>0% Base</span>
+                  <span>+10% Rally</span>
+                </div>
+                <p class="text-[11px] text-slate-500 pt-1" id="stress-scenario-desc">Baseline market valuation with standard asset-class collateral haircuts.</p>
+              </div>
+
+              <div class="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div class="p-3 rounded-xl border border-slate-200 bg-white">
+                  <div class="text-[11px] font-medium text-slate-500">Stressed Portfolio MV</div>
+                  <div class="text-base font-bold font-mono text-slate-900 mt-0.5" id="stress-mv">$0</div>
+                  <div class="text-[11px] font-mono text-slate-500 mt-0.5" id="stress-mv-diff">Change: $0</div>
+                </div>
+                <div class="p-3 rounded-xl border border-slate-200 bg-white">
+                  <div class="text-[11px] font-medium text-slate-500">Stressed Lending Limit</div>
+                  <div class="text-base font-bold font-mono text-blue-700 mt-0.5" id="stress-capacity">$0</div>
+                  <div class="text-[11px] font-mono text-slate-500 mt-0.5">Drawn: <span id="stress-drawn">$0</span></div>
+                </div>
+                <div class="col-span-2 sm:col-span-1 p-3 rounded-xl border border-slate-200 bg-white" id="stress-action-box">
+                  <div class="text-[11px] font-medium text-slate-500" id="stress-action-title">Excess Borrowing Power</div>
+                  <div class="text-base font-bold font-mono text-emerald-700 mt-0.5" id="stress-action-val">$0</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5" id="stress-action-sub">No margin cure required</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collateral Eligibility, Haircut & Concentration Table -->
+          <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Collateral Eligibility, Haircut & Concentration Schedule</h3>
+                <p class="text-xs text-slate-500">First Line of Defense (1LoD) collateral monitoring: asset haircuts, advance rates & single-asset concentration flags</p>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="px-2.5 py-1 rounded-md bg-slate-100 font-mono font-medium text-slate-700" id="hhi-detail-text">HHI Index: 0.24 (Diversified)</span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500 uppercase tracking-wider bg-slate-50">
+                    <th class="py-2.5 px-3 font-semibold">Holding / Asset Class</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Weight</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Market Value</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Haircut %</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Eligible Value</th>
+                    <th class="py-2.5 px-3 font-semibold text-right">Max Advance</th>
+                    <th class="py-2.5 px-3 font-semibold text-center">Settlement / Liq.</th>
+                    <th class="py-2.5 px-3 font-semibold text-center">1LoD Policy Flag</th>
+                  </tr>
+                </thead>
+                <tbody id="collateral-table-body" class="divide-y divide-slate-100">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 3: CORRELATION MATRIX & RISK-ADJUSTED ATTRIBUTION     -->
+        <!-- ========================================================= -->
+        <div id="tab-content-correlation" class="hidden space-y-4">
+
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+            <!-- Correlation Heatmap (7 cols) -->
+            <div class="xl:col-span-7 bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Multi-Asset Correlation Matrix</h3>
+                  <p class="text-xs text-slate-500">Cross-asset co-movement highlighting Gold ETF diversification vs. Equity/REIT clustering</p>
+                </div>
+                <label class="flex items-center gap-1.5 text-xs font-medium text-slate-700 cursor-pointer bg-slate-100 px-2.5 py-1 rounded-lg">
+                  <input type="checkbox" id="toggle-crisis-corr" onchange="updateAll()" class="rounded text-blue-600 focus:ring-blue-500" />
+                  <span>Crisis Correlation Spike</span>
+                </label>
+              </div>
+              <div id="correlation-matrix-container" class="overflow-x-auto">
+                <!-- Dynamic HTML Heatmap Matrix -->
+              </div>
+              <p class="text-[11px] text-slate-500 mt-3">
+                <strong>SBL Risk Insight:</strong> During systemic liquidity shocks, correlations among risk assets (Equities, Mutual Funds, ETFs, REITs) converge toward +0.85, eroding diversification buffers and accelerating margin calls.
+              </p>
+            </div>
+
+            <!-- Risk Contribution vs Capital Weight Chart (5 cols) -->
+            <div class="xl:col-span-5 bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Capital Weight vs. Risk Contribution (MCTR)</h3>
+                <p class="text-xs text-slate-500 mb-3">Identifies assets driving disproportionate portfolio variance</p>
+              </div>
+              <div class="relative h-[240px] w-full">
+                <canvas id="riskContributionChart"></canvas>
+              </div>
+              <div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 flex justify-between">
+                <span>Top Risk Contributor:</span>
+                <span class="font-semibold text-slate-900" id="top-risk-contributor">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Efficient Frontier Scatter Plot -->
+          <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Mean-Variance Efficient Frontier & Collateral Optimization</h3>
+                <p class="text-xs text-slate-500">Monte Carlo 400-portfolio cloud plotting Current Portfolio vs. Minimum Variance & Max Sharpe Tangency portfolios</p>
+              </div>
+              <div class="flex flex-wrap gap-3 text-xs font-mono">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span>Current</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>Max Sharpe</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>Min Volatility</span>
+              </div>
+            </div>
+            <div class="relative h-[260px] w-full">
+              <canvas id="frontierChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- INSTITUTIONAL CREDIT & RISK MEMO MODAL -->
+  <div id="memoModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div id="memoModalContent" class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="bg-navy-950 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <span class="text-[10px] uppercase tracking-widest text-blue-400 font-bold">First Line of Defense (1LoD) Collateral Review</span>
+          <h2 class="text-base font-bold">Securities-Based Lending (SBL) Risk & Liquidity Memo</h2>
+        </div>
+        <div class="flex items-center gap-2 no-print">
+          <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition">
+            Print / Save PDF
+          </button>
+          <button onclick="closeMemoModal()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="memo-body" class="p-6 space-y-5 text-sm text-slate-800">
+        <!-- Dynamically populated memo content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC & QUANTITATIVE RISK ENGINE -->
+  <script>
+    // =========================================================================
+    // 1. STATE & ASSET UNIVERSE CONFIGURATION
+    // =========================================================================
+    const RISK_FREE_RATE = 0.0425; // 4.25% benchmark yield
+    const TRADING_DAYS = 252;
+    const SIM_DAYS = 756; // 3 Years
+
+    // Base correlation structure between asset classes
+    const CLASS_CORRELATIONS = {
+      'Equities':     { 'Equities': 1.00, 'Mutual Funds': 0.88, 'ETFs': 0.92, 'REITs': 0.62, 'Gold ETFs': -0.08, 'Fixed Income': 0.12 },
+      'Mutual Funds': { 'Equities': 0.88, 'Mutual Funds': 1.00, 'ETFs': 0.89, 'REITs': 0.58, 'Gold ETFs': -0.05, 'Fixed Income': 0.18 },
+      'ETFs':         { 'Equities': 0.92, 'Mutual Funds': 0.89, 'ETFs': 1.00, 'REITs': 0.64, 'Gold ETFs': -0.06, 'Fixed Income': 0.15 },
+      'REITs':        { 'Equities': 0.62, 'Mutual Funds': 0.58, 'ETFs': 0.64, 'REITs': 1.00, 'Gold ETFs': 0.08,  'Fixed Income': 0.34 },
+      'Gold ETFs':    { 'Equities': -0.08,'Mutual Funds': -0.05,'ETFs': -0.06,'REITs': 0.08, 'Gold ETFs': 1.00,  'Fixed Income': 0.25 },
+      'Fixed Income': { 'Equities': 0.12, 'Mutual Funds': 0.18, 'ETFs': 0.15, 'REITs': 0.34, 'Gold ETFs': 0.25,  'Fixed Income': 1.00 }
+    };
+
+    const PRESETS = {
+      balanced: {
+        portfolioValue: 2500000,
+        loanAmount: 1100000,
+        holdings: [
+          { id: 'h1', name: 'US & Global Blue-Chip Equities', assetClass: 'Equities', weight: 35, expectedReturn: 0.115, volatility: 0.185, haircut: 0.30, maxLtv: 0.70, liqDays: 1, ticker: 'EQ-CORE' },
+          { id: 'h2', name: 'Flexi-Cap Active Mutual Fund', assetClass: 'Mutual Funds', weight: 20, expectedReturn: 0.105, volatility: 0.165, haircut: 0.30, maxLtv: 0.70, liqDays: 2, ticker: 'MF-FLEX' },
+          { id: 'h3', name: 'S&P 500 / Nifty 50 Index ETF', assetClass: 'ETFs', weight: 20, expectedReturn: 0.100, volatility: 0.155, haircut: 0.25, maxLtv: 0.75, liqDays: 1, ticker: 'ETF-IDX' },
+          { id: 'h4', name: 'Commercial & Industrial REITs', assetClass: 'REITs', weight: 15, expectedReturn: 0.082, volatility: 0.175, haircut: 0.40, maxLtv: 0.60, liqDays: 3, ticker: 'REIT-COM' },
+          { id: 'h5', name: 'Sovereign / Physical Gold ETF', assetClass: 'Gold ETFs', weight: 10, expectedReturn: 0.068, volatility: 0.135, haircut: 0.15, maxLtv: 0.85, liqDays: 1, ticker: 'GLD-ETF' }
+        ]
+      },
+      growth: {
+        portfolioValue: 3000000,
+        loanAmount: 1550000,
+        holdings: [
+          { id: 'h1', name: 'Large-Cap Tech & Growth Equities', assetClass: 'Equities', weight: 55, expectedReturn: 0.135, volatility: 0.230, haircut: 0.35, maxLtv: 0.65, liqDays: 1, ticker: 'EQ-TECH' },
+          { id: 'h2', name: 'Mid-Cap Opportunities Mutual Fund', assetClass: 'Mutual Funds', weight: 20, expectedReturn: 0.125, volatility: 0.210, haircut: 0.35, maxLtv: 0.65, liqDays: 3, ticker: 'MF-MID' },
+          { id: 'h3', name: 'Nasdaq / Innovation Index ETF', assetClass: 'ETFs', weight: 15, expectedReturn: 0.120, volatility: 0.205, haircut: 0.30, maxLtv: 0.70, liqDays: 1, ticker: 'ETF-INN' },
+          { id: 'h4', name: 'Data Center & Logistics REIT', assetClass: 'REITs', weight: 5, expectedReturn: 0.088, volatility: 0.180, haircut: 0.40, maxLtv: 0.60, liqDays: 3, ticker: 'REIT-DC' },
+          { id: 'h5', name: 'Physical Gold Bullion ETF', assetClass: 'Gold ETFs', weight: 5, expectedReturn: 0.068, volatility: 0.135, haircut: 0.15, maxLtv: 0.85, liqDays: 1, ticker: 'GLD-ETF' }
+        ]
+      },
+      defensive: {
+        portfolioValue: 2500000,
+        loanAmount: 950000,
+        holdings: [
+          { id: 'h1', name: 'Dividend Aristocrats Equities', assetClass: 'Equities', weight: 20, expectedReturn: 0.092, volatility: 0.140, haircut: 0.25, maxLtv: 0.75, liqDays: 1, ticker: 'EQ-DIV' },
+          { id: 'h2', name: 'Balanced Advantage Mutual Fund', assetClass: 'Mutual Funds', weight: 25, expectedReturn: 0.085, volatility: 0.110, haircut: 0.25, maxLtv: 0.75, liqDays: 2, ticker: 'MF-BAL' },
+          { id: 'h3', name: 'Short-Duration Treasury & Core ETF', assetClass: 'ETFs', weight: 25, expectedReturn: 0.062, volatility: 0.065, haircut: 0.10, maxLtv: 0.90, liqDays: 1, ticker: 'ETF-TRSY' },
+          { id: 'h4', name: 'Healthcare & Retail REIT', assetClass: 'REITs', weight: 10, expectedReturn: 0.078, volatility: 0.155, haircut: 0.35, maxLtv: 0.65, liqDays: 3, ticker: 'REIT-HC' },
+          { id: 'h5', name: 'Sovereign Gold ETF', assetClass: 'Gold ETFs', weight: 20, expectedReturn: 0.068, volatility: 0.135, haircut: 0.15, maxLtv: 0.85, liqDays: 1, ticker: 'GLD-ETF' }
+        ]
+      }
+    };
+
+    let state = {
+      activePreset: 'balanced',
+      portfolioValue: PRESETS.balanced.portfolioValue,
+      loanAmount: PRESETS.balanced.loanAmount,
+      holdings: JSON.parse(JSON.stringify(PRESETS.balanced.holdings)),
+      stressShock: 0, // -50 to +10 (%)
+      stressScenario: 'none',
+      randomSeed: 42,
+      charts: {}
+    };
+
+    // =========================================================================
+    // 2. MATHEMATICAL & QUANTITATIVE RISK FUNCTIONS
+    // =========================================================================
+
+    // Seeded pseudo-random generator for reproducible simulated paths
+    function mulberry32(a) {
+      return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // Box-Muller normal variate
+    function randNormal(rng) {
+      let u = 0, v = 0;
+      while (u === 0) u = rng();
+      while (v === 0) v = rng();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    // Get pairwise correlation between holding i and j
+    function getPairCorrelation(h1, h2, crisisSpike = false) {
+      if (h1.id === h2.id) return 1.0;
+      const base = (CLASS_CORRELATIONS[h1.assetClass] && CLASS_CORRELATIONS[h1.assetClass][h2.assetClass] !== undefined)
+        ? CLASS_CORRELATIONS[h1.assetClass][h2.assetClass]
+        : 0.45;
+      if (!crisisSpike) return base;
+      // Under systemic crisis, non-gold correlations spike toward 0.85
+      if (h1.assetClass === 'Gold ETFs' || h2.assetClass === 'Gold ETFs') {
+        return Math.min(0.25, base + 0.15);
+      }
+      return Math.min(0.95, base + (1 - base) * 0.65);
+    }
+
+    // Build Correlation & Covariance Matrices
+    function buildMatrices(holdings, crisisSpike = false) {
+      const n = holdings.length;
+      const corr = Array.from({ length: n }, () => Array(n).fill(0));
+      const cov = Array.from({ length: n }, () => Array(n).fill(0));
+
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const rho = getPairCorrelation(holdings[i], holdings[j], crisisSpike);
+          corr[i][j] = rho;
+          cov[i][j] = rho * holdings[i].volatility * holdings[j].volatility;
+        }
+      }
+      return { corr, cov };
+    }
+
+    // Cholesky Decomposition for correlated path simulation
+    function choleskyDecomposition(matrix) {
+      const n = matrix.length;
+      const L = Array.from({ length: n }, () => Array(n).fill(0));
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j <= i; j++) {
+          let sum = 0;
+          for (let k = 0; k < j; k++) {
+            sum += L[i][k] * L[j][k];
+          }
+          if (i === j) {
+            const val = matrix[i][i] - sum;
+            L[i][j] = Math.sqrt(Math.max(val, 1e-8));
+          } else {
+            L[i][j] = (matrix[i][j] - sum) / L[j][j];
+          }
+        }
+      }
+      return L;
+    }
+
+    // Calculate Portfolio Analytics, VaR/CVaR, MCTR, Drawdown, and SBL Metrics
+    function computeAnalytics() {
+      const holdings = state.holdings;
+      const n = holdings.length;
+      const rawWeightSum = holdings.reduce((s, h) => s + Number(h.weight || 0), 0);
+      const normFactor = rawWeightSum > 0 ? 100 / rawWeightSum : 0;
+      const weights = holdings.map(h => (Number(h.weight || 0) * normFactor) / 100);
+
+      const crisisSpike = document.getElementById('toggle-crisis-corr')?.checked || false;
+      const { corr, cov } = buildMatrices(holdings, crisisSpike);
+
+      // Expected Portfolio Return & Variance (w^T * Sigma * w)
+      let expReturn = 0;
+      let portVariance = 0;
+      const marginalCov = Array(n).fill(0);
+
+      for (let i = 0; i < n; i++) {
+        expReturn += weights[i] * holdings[i].expectedReturn;
+        let rowCov = 0;
+        for (let j = 0; j < n; j++) {
+          rowCov += cov[i][j] * weights[j];
+        }
+        marginalCov[i] = rowCov;
+        portVariance += weights[i] * rowCov;
+      }
+
+      const portVol = Math.sqrt(Math.max(portVariance, 1e-8));
+      const sharpe = (expReturn - RISK_FREE_RATE) / portVol;
+
+      // Marginal & Component Risk Contribution (MCTR & % Risk Contribution)
+      const riskContributions = holdings.map((h, i) => {
+        const mctr = marginalCov[i] / portVol;
+        const componentVol = weights[i] * mctr;
+        const pctRisk = (componentVol / portVol) * 100;
+        return {
+          name: h.name,
+          ticker: h.ticker,
+          weightPct: weights[i] * 100,
+          mctr: mctr * 100,
+          pctRisk: Math.max(0, pctRisk)
+        };
+      });
+
+      // Simulate 756 daily correlated returns
+      const rng = mulberry32(state.randomSeed);
+      const L = choleskyDecomposition(corr);
+      const dailyReturns = [];
+      const benchReturns = [];
+      const cumPortfolio = [100];
+      const cumBenchmark = [100];
+      const drawdownSeries = [0];
+
+      let peak = 100;
+      let maxDrawdown = 0;
+      let downsideSqSum = 0;
+      let downsideCount = 0;
+      const dailyRf = RISK_FREE_RATE / TRADING_DAYS;
+
+      for (let t = 0; t < SIM_DAYS; t++) {
+        // Inject realistic volatility clustering / market stress wave around day 220-260 and 520-560
+        let regimeMult = 1.0;
+        let driftShock = 0.0;
+        if (t >= 210 && t <= 255) { regimeMult = 1.65; driftShock = -0.0018; }
+        if (t >= 510 && t <= 545) { regimeMult = 1.45; driftShock = -0.0012; }
+
+        const z = Array.from({ length: n }, () => randNormal(rng));
+        let portDayRet = 0;
+
+        for (let i = 0; i < n; i++) {
+          let corrZ = 0;
+          for (let k = 0; k <= i; k++) {
+            corrZ += L[i][k] * z[k];
+          }
+          const muDaily = (holdings[i].expectedReturn / TRADING_DAYS) + driftShock;
+          const sigDaily = (holdings[i].volatility / Math.sqrt(TRADING_DAYS)) * regimeMult;
+          const assetRet = muDaily + sigDaily * corrZ;
+          portDayRet += weights[i] * assetRet;
+        }
+
+        // Benchmark 60/40 simulated return
+        const benchDayRet = (0.082 / TRADING_DAYS) + (0.105 / Math.sqrt(TRADING_DAYS)) * regimeMult * (0.75 * z[0] + 0.25 * (z[1] || z[0]));
+
+        dailyReturns.push(portDayRet);
+        benchReturns.push(benchDayRet);
+
+        const nextPort = cumPortfolio[cumPortfolio.length - 1] * (1 + portDayRet);
+        const nextBench = cumBenchmark[cumBenchmark.length - 1] * (1 + benchDayRet);
+        cumPortfolio.push(nextPort);
+        cumBenchmark.push(nextBench);
+
+        if (nextPort > peak) peak = nextPort;
+        const dd = (nextPort - peak) / peak;
+        drawdownSeries.push(dd * 100);
+        if (dd < maxDrawdown) maxDrawdown = dd;
+
+        if (portDayRet < dailyRf) {
+          downsideSqSum += Math.pow(portDayRet - dailyRf, 2);
+          downsideCount++;
+        }
+      }
+
+      const downsideDev = Math.sqrt((downsideSqSum / Math.max(downsideCount, 1)) * TRADING_DAYS);
+      const sortino = (expReturn - RISK_FREE_RATE) / Math.max(downsideDev, 0.01);
+
+      // Parametric VaR & CVaR (1-Day & 21-Day Monthly)
+      // Z_95 = 1.64485, Z_99 = 2.32635
+      // Normal ES multiplier: phi(Z) / (1 - alpha) -> 95%: 2.0627, 99%: 2.6652
+      const mu1D = expReturn / TRADING_DAYS;
+      const sig1D = portVol / Math.sqrt(TRADING_DAYS);
+      const mu21D = expReturn * (21 / TRADING_DAYS);
+      const sig21D = portVol * Math.sqrt(21 / TRADING_DAYS);
+
+      const paramVaR95_1D = Math.max(0, -(mu1D - 1.64485 * sig1D));
+      const paramVaR99_1D = Math.max(0, -(mu1D - 2.32635 * sig1D));
+      const paramCVaR95_1D = Math.max(0, -(mu1D - 2.06271 * sig1D));
+      const paramCVaR99_1D = Math.max(0, -(mu1D - 2.66521 * sig1D));
+
+      const paramVaR95_21D = Math.max(0, -(mu21D - 1.64485 * sig21D));
+      const paramVaR99_21D = Math.max(0, -(mu21D - 2.32635 * sig21D));
+      const paramCVaR95_21D = Math.max(0, -(mu21D - 2.06271 * sig21D));
+      const paramCVaR99_21D = Math.max(0, -(mu21D - 2.66521 * sig21D));
+
+      // Historical VaR & CVaR from simulated daily distribution
+      const sortedDaily = [...dailyReturns].sort((a, b) => a - b);
+      const idx95 = Math.floor(0.05 * sortedDaily.length);
+      const idx99 = Math.floor(0.01 * sortedDaily.length);
+      const histVaR95_1D = Math.max(0, -sortedDaily[idx95]);
+      const histVaR99_1D = Math.max(0, -sortedDaily[idx99]);
+      const histCVaR95_1D = Math.max(0, -sortedDaily.slice(0, Math.max(1, idx95)).reduce((s, v) => s + v, 0) / Math.max(1, idx95));
+      const histCVaR99_1D = Math.max(0, -sortedDaily.slice(0, Math.max(1, idx99)).reduce((s, v) => s + v, 0) / Math.max(1, idx99));
+
+      // Concentration (Herfindahl-Hirschman Index) & Liquidity Score
+      const hhi = weights.reduce((s, w) => s + w * w, 0);
+      const wtdLiqDays = holdings.reduce((s, h, i) => s + weights[i] * h.liqDays, 0);
+      const liquidityScore = Math.max(10, Math.min(100, Math.round(105 - (wtdLiqDays * 14) - (hhi * 25))));
+
+      // SBL Collateral & Haircut Calculations
+      const pv = state.portfolioValue;
+      const loan = state.loanAmount;
+      let totalEligibleCollateral = 0;
+      let maxLoanCapacity = 0;
+
+      const holdingDetails = holdings.map((h, i) => {
+        const w = weights[i];
+        const mv = pv * w;
+        const eligibleVal = mv * (1 - h.haircut);
+        const maxAdvance = mv * h.maxLtv;
+        totalEligibleCollateral += eligibleVal;
+        maxLoanCapacity += maxAdvance;
+
+        let policyFlag = 'Compliant';
+        let flagColor = 'bg-emerald-100 text-emerald-800';
+        if (w > 0.40) {
+          policyFlag = 'Single-Asset Conc. (>40%)';
+          flagColor = 'bg-rose-100 text-rose-800';
+        } else if (w > 0.30) {
+          policyFlag = 'Watch: Conc. >30%';
+          flagColor = 'bg-amber-100 text-amber-800';
+        } else if (h.liqDays >= 3) {
+          policyFlag = 'T+3 Liquidity Tier';
+          flagColor = 'bg-blue-100 text-blue-800';
+        }
+
+        return {
+          ...h,
+          normWeightPct: w * 100,
+          mv,
+          eligibleVal,
+          maxAdvance,
+          policyFlag,
+          flagColor
+        };
+      });
+
+      const weightedHaircut = pv > 0 ? (1 - totalEligibleCollateral / pv) : 0;
+      const maxWeightedLtv = pv > 0 ? (maxLoanCapacity / pv) : 0;
+      const currentLtv = pv > 0 ? (loan / pv) : 0;
+
+      // Margin Call Trigger occurs when Portfolio MV drops such that MV * maxWeightedLtv < Loan
+      // i.e. Critical MV = Loan / maxWeightedLtv
+      const criticalMv = maxWeightedLtv > 0 ? loan / maxWeightedLtv : 0;
+      const marginBufferDollars = pv - criticalMv;
+      const marginBufferPct = pv > 0 ? (marginBufferDollars / pv) * 100 : 0;
+
+      return {
+        rawWeightSum,
+        weights,
+        holdingDetails,
+        expReturn,
+        portVol,
+        sharpe,
+        sortino,
+        corr,
+        riskContributions,
+        dailyReturns,
+        cumPortfolio,
+        cumBenchmark,
+        drawdownSeries,
+        maxDrawdown: maxDrawdown * 100,
+        paramVaR95_1D, paramVaR99_1D, paramCVaR95_1D, paramCVaR99_1D,
+        paramVaR95_21D, paramVaR99_21D, paramCVaR95_21D, paramCVaR99_21D,
+        histVaR95_1D, histVaR99_1D, histCVaR95_1D, histCVaR99_1D,
+        hhi,
+        wtdLiqDays,
+        liquidityScore,
+        totalEligibleCollateral,
+        maxLoanCapacity,
+        weightedHaircut,
+        maxWeightedLtv,
+        currentLtv,
+        criticalMv,
+        marginBufferDollars,
+        marginBufferPct
+      };
+    }
+
+    // =========================================================================
+    // 3. UI FORMATTING & RENDERING
+    // =========================================================================
+    const fmtCurrency = (val) => {
+      const sign = val < 0 ? '-' : '';
+      return sign + '$' + Math.abs(Math.round(val)).toLocaleString('en-US');
+    };
+
+    const fmtPct = (val, decimals = 1) => `${val.toFixed(decimals)}%`;
+
+    // Render Sidebar Holdings Cards
+    function renderHoldingsSidebar() {
+      const container = document.getElementById('holdings-container');
+      const rawSum = state.holdings.reduce((s, h) => s + Number(h.weight || 0), 0);
+
+      const weightBadge = document.getElementById('total-weight-indicator');
+      weightBadge.textContent = `${rawSum.toFixed(1)}%`;
+      if (Math.abs(rawSum - 100) < 0.05) {
+        weightBadge.className = 'font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+      } else {
+        weightBadge.className = 'font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800';
+      }
+
+      container.innerHTML = state.holdings.map((h, idx) => {
+        const classColors = {
+          'Equities': 'bg-blue-100 text-blue-800',
+          'Mutual Funds': 'bg-indigo-100 text-indigo-800',
+          'ETFs': 'bg-cyan-100 text-cyan-800',
+          'REITs': 'bg-amber-100 text-amber-800',
+          'Gold ETFs': 'bg-yellow-100 text-yellow-800',
+          'Fixed Income': 'bg-emerald-100 text-emerald-800'
+        };
+        const badgeCls = classColors[h.assetClass] || 'bg-slate-100 text-slate-800';
+
+        return `
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white transition space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${badgeCls}">${h.assetClass}</span>
+                  <span class="text-[10px] font-mono text-slate-400">Haircut: ${(h.haircut * 100).toFixed(0)}%</span>
+                </div>
+                <div class="text-xs font-bold text-slate-800 mt-1">${h.name}</div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <input type="number" value="${h.weight}" min="0" max="100" step="1"
+                  onchange="updateHoldingWeight(${idx}, this.value)"
+                  class="w-14 px-1.5 py-1 text-right font-mono text-xs font-bold bg-white border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none" />
+                <span class="text-xs font-mono text-slate-500">%</span>
+                ${state.holdings.length > 2 ? `
+                  <button onclick="removeHolding(${idx})" class="text-slate-400 hover:text-rose-600 p-0.5" title="Remove holding">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+            <input type="range" min="0" max="100" step="1" value="${h.weight}"
+              oninput="updateHoldingWeight(${idx}, this.value)" class="w-full" />
+            <div class="flex justify-between text-[10px] font-mono text-slate-500">
+              <span>Exp Ret: ${(h.expectedReturn * 100).toFixed(1)}%</span>
+              <span>Vol: ${(h.volatility * 100).toFixed(1)}%</span>
+              <span>Liq: T+${h.liqDays}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Update Top Executive KPI Strip
+    function renderKpiCards(a) {
+      const pv = state.portfolioValue;
+      document.getElementById('kpi-haircut-avg').textContent = `Avg Haircut: ${(a.weightedHaircut * 100).toFixed(1)}%`;
+      document.getElementById('kpi-eligible-val').textContent = fmtCurrency(a.totalEligibleCollateral);
+      document.getElementById('kpi-total-val').textContent = fmtCurrency(pv);
+      document.getElementById('kpi-max-capacity').textContent = fmtCurrency(a.maxLoanCapacity);
+
+      // LTV & SBL Health
+      const ltvPct = a.currentLtv * 100;
+      const maxLtvPct = a.maxWeightedLtv * 100;
+      document.getElementById('kpi-current-ltv').textContent = fmtPct(ltvPct);
+      document.getElementById('kpi-max-ltv').textContent = fmtPct(maxLtvPct);
+
+      const barPct = Math.min(100, Math.max(0, (ltvPct / Math.max(maxLtvPct, 1)) * 100));
+      const ltvBar = document.getElementById('kpi-ltv-bar');
+      const sblBadge = document.getElementById('kpi-sbl-badge');
+      const bufEl = document.getElementById('kpi-margin-buffer');
+
+      ltvBar.style.width = `${barPct}%`;
+      if (a.marginBufferDollars < 0) {
+        ltvBar.className = 'bg-rose-600 h-full rounded-full transition-all duration-300';
+        sblBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800';
+        sblBadge.textContent = 'Margin Call';
+        bufEl.className = 'font-mono font-bold text-rose-700';
+      } else if (a.marginBufferPct < 12) {
+        ltvBar.className = 'bg-amber-500 h-full rounded-full transition-all duration-300';
+        sblBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+        sblBadge.textContent = 'Watchlist';
+        bufEl.className = 'font-mono font-semibold text-amber-700';
+      } else {
+        ltvBar.className = 'bg-emerald-500 h-full rounded-full transition-all duration-300';
+        sblBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        sblBadge.textContent = 'Healthy';
+        bufEl.className = 'font-mono font-semibold text-emerald-700';
+      }
+      bufEl.textContent = `${fmtCurrency(a.marginBufferDollars)} (${a.marginBufferPct.toFixed(1)}%)`;
+
+      // Sharpe & Sortino
+      document.getElementById('kpi-sharpe').textContent = a.sharpe.toFixed(2);
+      document.getElementById('kpi-sortino').textContent = a.sortino.toFixed(2);
+      document.getElementById('kpi-exp-ret').textContent = fmtPct(a.expReturn * 100);
+      document.getElementById('kpi-vol').textContent = fmtPct(a.portVol * 100);
+
+      // Monthly VaR
+      document.getElementById('kpi-var95').textContent = fmtCurrency(-pv * a.paramVaR95_21D);
+      document.getElementById('kpi-var95-pct').textContent = fmtPct(-a.paramVaR95_21D * 100);
+      document.getElementById('kpi-var99').textContent = `${fmtCurrency(-pv * a.paramVaR99_21D)} (${fmtPct(-a.paramVaR99_21D * 100)})`;
+
+      // Monthly CVaR
+      document.getElementById('kpi-cvar99').textContent = fmtCurrency(-pv * a.paramCVaR99_21D);
+      document.getElementById('kpi-cvar99-pct').textContent = fmtPct(-a.paramCVaR99_21D * 100);
+      document.getElementById('kpi-cvar95').textContent = fmtCurrency(-pv * a.paramCVaR95_21D);
+
+      // Max Drawdown & Liquidity
+      document.getElementById('kpi-max-dd').textContent = fmtPct(a.maxDrawdown);
+      document.getElementById('kpi-liq-days').textContent = `${a.wtdLiqDays.toFixed(1)}d`;
+      document.getElementById('kpi-liq-score').textContent = `${a.liquidityScore} / 100`;
+      const hhiBadge = document.getElementById('kpi-hhi-badge');
+      hhiBadge.textContent = `HHI: ${a.hhi.toFixed(2)}`;
+      hhiBadge.className = a.hhi > 0.32
+        ? 'text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800'
+        : 'text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700';
+    }
+
+    // Render Tail VaR/CVaR Table
+    function renderVarMatrixTable(a) {
+      const pv = state.portfolioValue;
+      const scaleMonth = Math.sqrt(21);
+      const rows = [
+        {
+          label: '1-Day Trading Horizon',
+          p95: `${fmtCurrency(-pv * a.paramVaR95_1D)} (${(-a.paramVaR95_1D * 100).toFixed(2)}%)`,
+          h95: `${fmtCurrency(-pv * a.histVaR95_1D)} (${(-a.histVaR95_1D * 100).toFixed(2)}%)`,
+          p99: `${fmtCurrency(-pv * a.paramVaR99_1D)} (${(-a.paramVaR99_1D * 100).toFixed(2)}%)`,
+          pc99: `${fmtCurrency(-pv * a.paramCVaR99_1D)} (${(-a.paramCVaR99_1D * 100).toFixed(2)}%)`,
+          hc99: `${fmtCurrency(-pv * a.histCVaR99_1D)} (${(-a.histCVaR99_1D * 100).toFixed(2)}%)`
+        },
+        {
+          label: '10-Day Regulatory Basel Horizon',
+          p95: `${fmtCurrency(-pv * a.paramVaR95_1D * Math.sqrt(10))} (${(-a.paramVaR95_1D * Math.sqrt(10) * 100).toFixed(2)}%)`,
+          h95: `${fmtCurrency(-pv * a.histVaR95_1D * Math.sqrt(10))} (${(-a.histVaR95_1D * Math.sqrt(10) * 100).toFixed(2)}%)`,
+          p99: `${fmtCurrency(-pv * a.paramVaR99_1D * Math.sqrt(10))} (${(-a.paramVaR99_1D * Math.sqrt(10) * 100).toFixed(2)}%)`,
+          pc99: `${fmtCurrency(-pv * a.paramCVaR99_1D * Math.sqrt(10))} (${(-a.paramCVaR99_1D * Math.sqrt(10) * 100).toFixed(2)}%)`,
+          hc99: `${fmtCurrency(-pv * a.histCVaR99_1D * Math.sqrt(10))} (${(-a.histCVaR99_1D * Math.sqrt(10) * 100).toFixed(2)}%)`
+        },
+        {
+          label: '21-Day Monthly SBL Review Horizon',
+          p95: `${fmtCurrency(-pv * a.paramVaR95_21D)} (${(-a.paramVaR95_21D * 100).toFixed(2)}%)`,
+          h95: `${fmtCurrency(-pv * a.histVaR95_1D * scaleMonth)} (${(-a.histVaR95_1D * scaleMonth * 100).toFixed(2)}%)`,
+          p99: `${fmtCurrency(-pv * a.paramVaR99_21D)} (${(-a.paramVaR99_21D * 100).toFixed(2)}%)`,
+          pc99: `${fmtCurrency(-pv * a.paramCVaR99_21D)} (${(-a.paramCVaR99_21D * 100).toFixed(2)}%)`,
+          hc99: `${fmtCurrency(-pv * a.histCVaR99_1D * scaleMonth)} (${(-a.histCVaR99_1D * scaleMonth * 100).toFixed(2)}%)`
+        }
+      ];
+
+      document.getElementById('var-matrix-body').innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-800">${r.label}</td>
+          <td class="py-2.5 px-3 text-right text-amber-700">${r.p95}</td>
+          <td class="py-2.5 px-3 text-right text-slate-700">${r.h95}</td>
+          <td class="py-2.5 px-3 text-right text-rose-700">${r.p99}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-rose-800">${r.pc99}</td>
+          <td class="py-2.5 px-3 text-right text-slate-800">${r.hc99}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Render Tab 2: SBL Collateral Table & Stress Simulator
+    function renderSblAndStress(a) {
+      // Collateral Table
+      const tbody = document.getElementById('collateral-table-body');
+      tbody.innerHTML = a.holdingDetails.map(h => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3">
+            <div class="font-semibold text-slate-900">${h.name}</div>
+            <div class="text-[11px] text-slate-500">${h.assetClass}</div>
+          </td>
+          <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">${h.normWeightPct.toFixed(1)}%</td>
+          <td class="py-2.5 px-3 text-right font-mono text-slate-800">${fmtCurrency(h.mv)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-amber-700">${(h.haircut * 100).toFixed(0)}%</td>
+          <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-900">${fmtCurrency(h.eligibleVal)}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-semibold text-blue-700">${fmtCurrency(h.maxAdvance)}</td>
+          <td class="py-2.5 px-3 text-center font-mono text-slate-600">T+${h.liqDays}</td>
+          <td class="py-2.5 px-3 text-center">
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${h.flagColor}">${h.policyFlag}</span>
+          </td>
+        </tr>
+      `).join('');
+
+      const hhiLabel = a.hhi < 0.22 ? 'Well Diversified' : (a.hhi < 0.32 ? 'Moderate Concentration' : 'High Concentration Alert');
+      document.getElementById('hhi-detail-text').textContent = `HHI Index: ${a.hhi.toFixed(3)} (${hhiLabel})`;
+
+      // Stress Test Calculation
+      const shockPct = state.stressShock / 100;
+      let stressedMv = 0;
+      let stressedCapacity = 0;
+
+      a.holdingDetails.forEach(h => {
+        // Asset-specific sensitivity during named scenarios
+        let assetShock = shockPct;
+        if (state.stressScenario === 'gfc') {
+          if (h.assetClass === 'Equities' || h.assetClass === 'Mutual Funds' || h.assetClass === 'ETFs') assetShock = -0.35;
+          else if (h.assetClass === 'REITs') assetShock = -0.28;
+          else if (h.assetClass === 'Gold ETFs') assetShock = +0.08;
+        } else if (state.stressScenario === 'covid') {
+          if (h.assetClass === 'Equities' || h.assetClass === 'Mutual Funds' || h.assetClass === 'ETFs') assetShock = -0.26;
+          else if (h.assetClass === 'REITs') assetShock = -0.22;
+          else if (h.assetClass === 'Gold ETFs') assetShock = +0.04;
+        } else if (state.stressScenario === 'rates') {
+          if (h.assetClass === 'REITs') assetShock = -0.25;
+          else if (h.assetClass === 'Equities' || h.assetClass === 'Mutual Funds' || h.assetClass === 'ETFs') assetShock = -0.14;
+          else if (h.assetClass === 'Gold ETFs') assetShock = -0.05;
+        } else {
+          // Custom slider scales gold at 0.2x beta
+          assetShock = h.assetClass === 'Gold ETFs' ? shockPct * 0.2 : shockPct;
+        }
+
+        const newMv = Math.max(0, h.mv * (1 + assetShock));
+        stressedMv += newMv;
+        stressedCapacity += newMv * h.maxLtv;
+      });
+
+      const loan = state.loanAmount;
+      const diffMv = stressedMv - state.portfolioValue;
+      const netMarginHeadroom = stressedCapacity - loan;
+
+      document.getElementById('stress-mv').textContent = fmtCurrency(stressedMv);
+      document.getElementById('stress-mv-diff').textContent = `Change: ${fmtCurrency(diffMv)}`;
+      document.getElementById('stress-capacity').textContent = fmtCurrency(stressedCapacity);
+      document.getElementById('stress-drawn').textContent = fmtCurrency(loan);
+
+      const pill = document.getElementById('stress-status-pill');
+      const actionBox = document.getElementById('stress-action-box');
+      const actionTitle = document.getElementById('stress-action-title');
+      const actionVal = document.getElementById('stress-action-val');
+      const actionSub = document.getElementById('stress-action-sub');
+
+      if (netMarginHeadroom < 0) {
+        const shortfall = Math.abs(netMarginHeadroom);
+        pill.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800';
+        pill.textContent = 'MARGIN CALL TRIGGERED';
+        actionBox.className = 'col-span-2 sm:col-span-1 p-3 rounded-xl border border-rose-300 bg-rose-50';
+        actionTitle.textContent = 'Margin Call Cure Required';
+        actionTitle.className = 'text-[11px] font-bold text-rose-800';
+        actionVal.textContent = fmtCurrency(shortfall);
+        actionVal.className = 'text-base font-bold font-mono text-rose-700 mt-0.5';
+        actionSub.textContent = 'Cash paydown or collateral pledge needed';
+      } else if (netMarginHeadroom < loan * 0.15) {
+        pill.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+        pill.textContent = 'EARLY WARNING WATCH';
+        actionBox.className = 'col-span-2 sm:col-span-1 p-3 rounded-xl border border-amber-300 bg-amber-50';
+        actionTitle.textContent = 'Remaining Cushion';
+        actionTitle.className = 'text-[11px] font-semibold text-amber-800';
+        actionVal.textContent = fmtCurrency(netMarginHeadroom);
+        actionVal.className = 'text-base font-bold font-mono text-amber-700 mt-0.5';
+        actionSub.textContent = 'Buffer <15% — notify Private Banker';
+      } else {
+        pill.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        pill.textContent = 'FACILITY HEALTHY';
+        actionBox.className = 'col-span-2 sm:col-span-1 p-3 rounded-xl border border-slate-200 bg-white';
+        actionTitle.textContent = 'Excess Borrowing Power';
+        actionTitle.className = 'text-[11px] font-medium text-slate-500';
+        actionVal.textContent = fmtCurrency(netMarginHeadroom);
+        actionVal.className = 'text-base font-bold font-mono text-emerald-700 mt-0.5';
+        actionSub.textContent = 'Full SBL covenant compliance';
+      }
+    }
+
+    // Render Tab 3: Correlation Matrix Heatmap
+    function renderCorrelationMatrix(a) {
+      const holdings = state.holdings;
+      const corr = a.corr;
+
+      const getCellColor = (val) => {
+        if (val >= 0.99) return 'bg-slate-800 text-white';
+        if (val >= 0.75) return 'bg-rose-600/90 text-white';
+        if (val >= 0.50) return 'bg-amber-400/80 text-slate-900';
+        if (val >= 0.20) return 'bg-amber-100 text-slate-800';
+        if (val >= 0.00) return 'bg-emerald-100 text-emerald-900';
+        return 'bg-emerald-600 text-white';
+      };
+
+      let html = `<table class="w-full border-collapse text-xs font-mono">
+        <thead>
+          <tr>
+            <th class="p-2 text-left font-sans text-slate-500 font-semibold">Asset</th>
+            ${holdings.map(h => `<th class="p-2 text-center font-semibold text-slate-700">${h.ticker}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>`;
+
+      holdings.forEach((rowH, i) => {
+        html += `<tr class="border-t border-slate-100">
+          <td class="p-2 font-sans font-semibold text-slate-800 whitespace-nowrap">${rowH.ticker} <span class="text-[10px] font-normal text-slate-400">(${rowH.assetClass})</span></td>
+          ${holdings.map((colH, j) => {
+            const val = corr[i][j];
+            return `<td class="p-2 text-center font-bold rounded-sm border border-white ${getCellColor(val)}">${val.toFixed(2)}</td>`;
+          }).join('')}
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById('correlation-matrix-container').innerHTML = html;
+
+      // Update Top Risk Contributor label
+      const sortedRisk = [...a.riskContributions].sort((x, y) => y.pctRisk - x.pctRisk);
+      if (sortedRisk.length > 0) {
+        document.getElementById('top-risk-contributor').textContent =
+          `${sortedRisk[0].name} (${sortedRisk[0].pctRisk.toFixed(1)}% of Total Risk vs. ${sortedRisk[0].weightPct.toFixed(1)}% Weight)`;
+      }
+    }
+
+    // =========================================================================
+    // 4. CHART.JS VISUALIZATIONS
+    // =========================================================================
+    function renderCharts(a) {
+      // Sample every 6th day for smooth, fast rendering (127 points over 3Y)
+      const step = 6;
+      const labels = [];
+      const portPts = [];
+      const benchPts = [];
+      const ddPts = [];
+
+      for (let i = 0; i < a.cumPortfolio.length; i += step) {
+        const monthNum = Math.round((i / SIM_DAYS) * 36);
+        labels.push(`M${monthNum}`);
+        portPts.push(Number(a.cumPortfolio[i].toFixed(2)));
+        benchPts.push(Number(a.cumBenchmark[i].toFixed(2)));
+        ddPts.push(Number(a.drawdownSeries[i].toFixed(2)));
+      }
+
+      document.getElementById('dd-chart-badge').textContent = `Max DD: ${a.maxDrawdown.toFixed(1)}%`;
+      document.getElementById('hist-var-badge').textContent = `95% 1D VaR: -${(a.paramVaR95_1D * 100).toFixed(2)}%`;
+
+      // 1. Cumulative Performance Chart
+      if (state.charts.cumulative) state.charts.cumulative.destroy();
+      state.charts.cumulative = new Chart(document.getElementById('cumulativeChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Pledged Collateral Portfolio (Indexed = 100)',
+              data: portPts,
+              borderColor: '#1d4ed8',
+              backgroundColor: 'rgba(29, 78, 216, 0.08)',
+              borderWidth: 2.2,
+              fill: true,
+              pointRadius: 0,
+              tension: 0.25
+            },
+            {
+              label: '60/40 Wealth Benchmark',
+              data: benchPts,
+              borderColor: '#64748b',
+              borderWidth: 1.6,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0,
+              tension: 0.25
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11, family: 'Inter' } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10, family: 'JetBrains Mono' } } }
+          }
+        }
+      });
+
+      // 2. Underwater Drawdown Chart
+      if (state.charts.drawdown) state.charts.drawdown.destroy();
+      state.charts.drawdown = new Chart(document.getElementById('drawdownChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Portfolio Drawdown (%)',
+              data: ddPts,
+              borderColor: '#e11d48',
+              backgroundColor: 'rgba(225, 29, 72, 0.16)',
+              borderWidth: 1.8,
+              fill: true,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: 'Margin Call Drawdown Trigger (%)',
+              data: labels.map(() => Number((-Math.max(0, a.marginBufferPct)).toFixed(2))),
+              borderColor: '#d97706',
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10, family: 'Inter' } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 9, font: { size: 10 } } },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: v => v + '%', font: { size: 10, family: 'JetBrains Mono' } }
+            }
+          }
+        }
+      });
+
+      // 3. Daily Return Histogram (Tail Loss Distribution)
+      const bins = 24;
+      const minRet = -0.045;
+      const maxRet = 0.045;
+      const binWidth = (maxRet - minRet) / bins;
+      const counts = Array(bins).fill(0);
+      const binLabels = [];
+      const barColors = [];
+      const varThreshold = -a.paramVaR95_1D;
+
+      for (let b = 0; b < bins; b++) {
+        const center = minRet + (b + 0.5) * binWidth;
+        binLabels.push((center * 100).toFixed(1) + '%');
+        barColors.push(center <= varThreshold ? 'rgba(225, 29, 72, 0.85)' : 'rgba(30, 58, 95, 0.75)');
+      }
+
+      a.dailyReturns.forEach(r => {
+        const idx = Math.min(bins - 1, Math.max(0, Math.floor((r - minRet) / binWidth)));
+        counts[idx]++;
+      });
+
+      if (state.charts.distribution) state.charts.distribution.destroy();
+      state.charts.distribution = new Chart(document.getElementById('distributionChart'), {
+        type: 'bar',
+        data: {
+          labels: binLabels,
+          datasets: [{
+            label: 'Trading Days Frequency (Red = 95% Left Tail)',
+            data: counts,
+            backgroundColor: barColors,
+            borderRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 9, family: 'JetBrains Mono' } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+
+      // 4. Risk Contribution vs Capital Weight Bar Chart
+      if (state.charts.riskContrib) state.charts.riskContrib.destroy();
+      state.charts.riskContrib = new Chart(document.getElementById('riskContributionChart'), {
+        type: 'bar',
+        data: {
+          labels: a.riskContributions.map(r => r.ticker),
+          datasets: [
+            {
+              label: 'Capital Weight (%)',
+              data: a.riskContributions.map(r => Number(r.weightPct.toFixed(1))),
+              backgroundColor: '#94a3b8',
+              borderRadius: 4
+            },
+            {
+              label: 'Risk Contribution (%)',
+              data: a.riskContributions.map(r => Number(r.pctRisk.toFixed(1))),
+              backgroundColor: '#1d4ed8',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10, family: 'JetBrains Mono' } } },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: v => v + '%', font: { size: 10, family: 'JetBrains Mono' } }
+            }
+          }
+        }
+      });
+
+      // 5. Efficient Frontier Scatter Plot (Monte Carlo Random Portfolios)
+      const rng = mulberry32(101);
+      const n = state.holdings.length;
+      const cloudPoints = [];
+      let bestSharpePt = { x: a.portVol * 100, y: a.expReturn * 100, sharpe: a.sharpe };
+      let minVolPt = { x: a.portVol * 100, y: a.expReturn * 100 };
+
+      for (let s = 0; s < 350; s++) {
+        const raw = Array.from({ length: n }, () => Math.pow(rng(), 1.6));
+        const sum = raw.reduce((acc, v) => acc + v, 0);
+        const w = raw.map(v => v / sum);
+
+        let rExp = 0;
+        let vPort = 0;
+        for (let i = 0; i < n; i++) {
+          rExp += w[i] * state.holdings[i].expectedReturn;
+          for (let j = 0; j < n; j++) {
+            const rho = getPairCorrelation(state.holdings[i], state.holdings[j], false);
+            vPort += w[i] * w[j] * rho * state.holdings[i].volatility * state.holdings[j].volatility;
+          }
+        }
+        const volPct = Math.sqrt(vPort) * 100;
+        const retPct = rExp * 100;
+        const sh = (rExp - RISK_FREE_RATE) / Math.sqrt(vPort);
+
+        cloudPoints.push({ x: Number(volPct.toFixed(2)), y: Number(retPct.toFixed(2)) });
+        if (sh > bestSharpePt.sharpe) bestSharpePt = { x: Number(volPct.toFixed(2)), y: Number(retPct.toFixed(2)), sharpe: sh };
+        if (volPct < minVolPt.x) minVolPt = { x: Number(volPct.toFixed(2)), y: Number(retPct.toFixed(2)) };
+      }
+
+      if (state.charts.frontier) state.charts.frontier.destroy();
+      state.charts.frontier = new Chart(document.getElementById('frontierChart'), {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Simulated Allocations',
+              data: cloudPoints,
+              backgroundColor: 'rgba(148, 163, 184, 0.35)',
+              pointRadius: 3
+            },
+            {
+              label: 'Current Pledged Portfolio',
+              data: [{ x: Number((a.portVol * 100).toFixed(2)), y: Number((a.expReturn * 100).toFixed(2)) }],
+              backgroundColor: '#2563eb',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              pointRadius: 8
+            },
+            {
+              label: 'Max Sharpe Tangency',
+              data: [bestSharpePt],
+              backgroundColor: '#059669',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              pointRadius: 8
+            },
+            {
+              label: 'Minimum Variance',
+              data: [minVolPt],
+              backgroundColor: '#d97706',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              pointRadius: 8
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: Vol ${ctx.parsed.x}%, Exp Ret ${ctx.parsed.y}%`
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Annualized Volatility (Risk %)', font: { size: 11, weight: 'bold' } },
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: v => v + '%', font: { size: 10, family: 'JetBrains Mono' } }
+            },
+            y: {
+              title: { display: true, text: 'Expected Annual Return (%)', font: { size: 11, weight: 'bold' } },
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: v => v + '%', font: { size: 10, family: 'JetBrains Mono' } }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 5. EVENT HANDLERS & INTERACTIONS
+    // =========================================================================
+    function updateAll() {
+      renderHoldingsSidebar();
+      const analytics = computeAnalytics();
+      renderKpiCards(analytics);
+      renderVarMatrixTable(analytics);
+      renderSblAndStress(analytics);
+      renderCorrelationMatrix(analytics);
+      renderCharts(analytics);
+    }
+
+    function applyPreset(key) {
+      const p = PRESETS[key];
+      if (!p) return;
+      state.activePreset = key;
+      state.portfolioValue = p.portfolioValue;
+      state.loanAmount = p.loanAmount;
+      state.holdings = JSON.parse(JSON.stringify(p.holdings));
+
+      document.getElementById('input-portfolio-value').value = p.portfolioValue;
+      document.getElementById('input-loan-amount').value = p.loanAmount;
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.className = 'preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 border border-slate-700 transition';
+      });
+      const activeBtn = document.getElementById(`preset-${key}`);
+      if (activeBtn) {
+        activeBtn.className = 'preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white border border-blue-500 transition shadow-sm';
+      }
+
+      updateAll();
+    }
+
+    function handleFacilityInput() {
+      const pv = Number(document.getElementById('input-portfolio-value').value) || 0;
+      const loan = Number(document.getElementById('input-loan-amount').value) || 0;
+      state.portfolioValue = Math.max(0, pv);
+      state.loanAmount = Math.max(0, loan);
+      const analytics = computeAnalytics();
+      renderKpiCards(analytics);
+      renderVarMatrixTable(analytics);
+      renderSblAndStress(analytics);
+    }
+
+    function updateHoldingWeight(index, val) {
+      state.holdings[index].weight = Math.max(0, Math.min(100, Number(val) || 0));
+      updateAll();
+    }
+
+    function normalizeWeights() {
+      const sum = state.holdings.reduce((s, h) => s + Number(h.weight || 0), 0);
+      if (sum <= 0) return;
+      let running = 0;
+      state.holdings.forEach((h, i) => {
+        if (i === state.holdings.length - 1) {
+          h.weight = Math.max(0, Number((100 - running).toFixed(1)));
+        } else {
+          h.weight = Number(((h.weight / sum) * 100).toFixed(1));
+          running += h.weight;
+        }
+      });
+      updateAll();
+    }
+
+    function removeHolding(index) {
+      if (state.holdings.length <= 2) return;
+      state.holdings.splice(index, 1);
+      normalizeWeights();
+    }
+
+    function toggleAddAssetForm() {
+      const form = document.getElementById('add-asset-form');
+      form.classList.toggle('hidden');
+    }
+
+    function addCustomAsset() {
+      const name = document.getElementById('new-asset-name').value.trim() || 'Custom Collateral Security';
+      const assetClass = document.getElementById('new-asset-class').value;
+      const weight = Math.max(1, Math.min(100, Number(document.getElementById('new-asset-weight').value) || 10));
+      const expectedReturn = (Number(document.getElementById('new-asset-ret').value) || 7.5) / 100;
+      const volatility = Math.max(0.01, (Number(document.getElementById('new-asset-vol').value) || 12) / 100);
+      const haircut = Math.max(0.05, Math.min(0.85, (Number(document.getElementById('new-asset-haircut').value) || 20) / 100));
+      const liqDays = Math.max(1, Number(document.getElementById('new-asset-days').value) || 1);
+
+      state.holdings.push({
+        id: 'h_' + Date.now(),
+        name,
+        assetClass,
+        weight,
+        expectedReturn,
+        volatility,
+        haircut,
+        maxLtv: Number((1 - haircut).toFixed(2)),
+        liqDays,
+        ticker: name.substring(0, 6).toUpperCase().replace(/\s+/g, '')
+      });
+
+      document.getElementById('new-asset-name').value = '';
+      toggleAddAssetForm();
+      updateAll();
+    }
+
+    function switchTab(tabName) {
+      ['drawdown', 'sbl', 'correlation'].forEach(t => {
+        const content = document.getElementById(`tab-content-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          content.classList.remove('hidden');
+          btn.className = 'tab-btn flex-1 min-w-[160px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold bg-navy-900 text-white shadow-sm transition flex items-center justify-center gap-2';
+        } else {
+          content.classList.add('hidden');
+          btn.className = 'tab-btn flex-1 min-w-[160px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition flex items-center justify-center gap-2';
+        }
+      });
+      // Re-render charts on tab switch so hidden canvases resize cleanly
+      const a = computeAnalytics();
+      renderCharts(a);
+    }
+
+    function regeneratePath() {
+      state.randomSeed = Math.floor(Math.random() * 10000) + 1;
+      updateAll();
+    }
+
+    function setStressScenario(scenario) {
+      state.stressScenario = scenario;
+      const slider = document.getElementById('stress-slider');
+      const label = document.getElementById('stress-shock-label');
+      const desc = document.getElementById('stress-scenario-desc');
+
+      document.querySelectorAll('.stress-btn').forEach(b => {
+        b.className = 'stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700';
+      });
+      event.target.className = 'stress-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-900 text-white';
+
+      if (scenario === 'none') {
+        state.stressShock = 0;
+        slider.value = 0;
+        label.textContent = '0.0%';
+        desc.textContent = 'Baseline market valuation with standard asset-class collateral haircuts.';
+      } else if (scenario === 'correction') {
+        state.stressShock = -15;
+        slider.value = -15;
+        label.textContent = '-15.0%';
+        desc.textContent = 'Broad -15% equity/multi-asset correction (Gold ETF buffered at 0.2x beta).';
+      } else if (scenario === 'gfc') {
+        state.stressShock = -35;
+        slider.value = -35;
+        label.textContent = 'GFC Multi-Asset';
+        desc.textContent = '2008 GFC Shock: Equities/Funds/ETFs -35%, REITs -28%, Sovereign Gold ETF +8% flight-to-safety.';
+      } else if (scenario === 'covid') {
+        state.stressShock = -26;
+        slider.value = -26;
+        label.textContent = 'COVID Crunch';
+        desc.textContent = 'March 2020 Liquidity Crunch: Equities/ETFs -26%, REITs -22%, Gold +4% with T+1 liquidity focus.';
+      } else if (scenario === 'rates') {
+        state.stressShock = -18;
+        slider.value = -18;
+        label.textContent = 'Rate Hike Shock';
+        desc.textContent = 'Aggressive Rate Hike / Stagflation: REITs -25%, Equities -14%, Gold ETF -5%.';
+      }
+
+      renderSblAndStress(computeAnalytics());
+    }
+
+    function handleStressSlider(val) {
+      state.stressScenario = 'custom';
+      state.stressShock = Number(val);
+      document.getElementById('stress-shock-label').textContent = `${state.stressShock > 0 ? '+' : ''}${state.stressShock.toFixed(1)}%`;
+      document.getElementById('stress-scenario-desc').textContent = `Custom uniform market shock of ${state.stressShock}% applied across risk assets (Gold ETF at 0.2x sensitivity).`;
+      renderSblAndStress(computeAnalytics());
+    }
+
+    // =========================================================================
+    // 6. CREDIT & RISK MEMO GENERATOR MODAL
+    // =========================================================================
+    function openMemoModal() {
+      const a = computeAnalytics();
+      const pv = state.portfolioValue;
+      const loan = state.loanAmount;
+      const statusText = a.marginBufferDollars < 0 ? 'BREACH / MARGIN CALL' : (a.marginBufferPct < 12 ? 'WATCHLIST' : 'APPROVED / HEALTHY');
+
+      document.getElementById('memo-body').innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <span class="text-slate-500 block">Gross Collateral MV</span>
+            <span class="font-mono font-bold text-slate-900 text-sm">${fmtCurrency(pv)}</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Eligible Collateral</span>
+            <span class="font-mono font-bold text-slate-900 text-sm">${fmtCurrency(a.totalEligibleCollateral)}</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">SBL Drawn / Max Limit</span>
+            <span class="font-mono font-bold text-blue-700 text-sm">${fmtCurrency(loan)} / ${fmtCurrency(a.maxLoanCapacity)}</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">1LoD Risk Status</span>
+            <span class="font-bold text-sm ${a.marginBufferDollars < 0 ? 'text-rose-700' : 'text-emerald-700'}">${statusText}</span>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. Executive Collateral & Credit Assessment</h3>
+          <p class="text-xs leading-relaxed text-slate-700">
+            The pledged multi-asset portfolio carries a gross market value of <strong>${fmtCurrency(pv)}</strong> across ${state.holdings.length} positions, yielding a weighted average collateral haircut of <strong>${(a.weightedHaircut * 100).toFixed(1)}%</strong> and maximum SBL advance capacity of <strong>${fmtCurrency(a.maxLoanCapacity)}</strong> (${(a.maxWeightedLtv * 100).toFixed(1)}% max blended LTV). Against the current drawn Liquidity Access Line balance of <strong>${fmtCurrency(loan)}</strong> (<strong>${(a.currentLtv * 100).toFixed(1)}%</strong> current LTV), the facility maintains a collateral drawdown buffer of <strong>${fmtCurrency(a.marginBufferDollars)} (${a.marginBufferPct.toFixed(1)}%)</strong> before triggering a maintenance margin call.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">2. Quantitative Tail-Risk & Liquidity Profile</h3>
+          <div class="grid grid-cols-3 gap-3 text-xs font-mono">
+            <div class="p-2.5 border border-slate-200 rounded-lg">
+              <div class="font-sans text-[11px] text-slate-500">Annualized Vol / Sharpe</div>
+              <div class="font-bold text-slate-900 mt-0.5">${(a.portVol * 100).toFixed(1)}% / ${a.sharpe.toFixed(2)}</div>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-lg">
+              <div class="font-sans text-[11px] text-slate-500">99% Monthly VaR / CVaR</div>
+              <div class="font-bold text-rose-700 mt-0.5">${fmtCurrency(-pv * a.paramVaR99_21D)} / ${fmtCurrency(-pv * a.paramCVaR99_21D)}</div>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-lg">
+              <div class="font-sans text-[11px] text-slate-500">3Y Max DD / Liquidity</div>
+              <div class="font-bold text-slate-900 mt-0.5">${a.maxDrawdown.toFixed(1)}% / T+${a.wtdLiqDays.toFixed(1)}d</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">3. Concentration & First Line of Defense (1LoD) Controls</h3>
+          <ul class="list-disc pl-5 space-y-1 text-xs text-slate-700">
+            <li><strong>Herfindahl-Hirschman Index (HHI):</strong> ${a.hhi.toFixed(3)} (${a.hhi > 0.32 ? 'Elevated concentration — recommend diversification or additional collateral haircut buffer' : 'Within standard wealth management collateral diversification guidelines'}).</li>
+            <li><strong>Liquidation Settlement Profile:</strong> Weighted average liquidation time of <strong>${a.wtdLiqDays.toFixed(1)} business days</strong> (Liquidity Score: ${a.liquidityScore}/100), supporting timely collateral monetization in a margin cure event.</li>
+            <li><strong>Audit & Policy Governance:</strong> All pledged holdings verified for eligibility, daily mark-to-market collateral monitoring, and annual SBL credit review documentation.</li>
+          </ul>
+        </div>
+      `;
+
+      const modal = document.getElementById('memoModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeMemoModal() {
+      const modal = document.getElementById('memoModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Initialize Dashboard on Window Load
+    window.onload = function() {
+      updateAll();
+    };
+  </script>
+</body>
+</html>
